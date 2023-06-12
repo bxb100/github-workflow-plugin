@@ -1,131 +1,222 @@
 package com.github.yunabraska.githubworkflow.completion;
 
-import java.util.List;
+import com.github.yunabraska.githubworkflow.api.RepositoryContentRequest;
+import com.github.yunabraska.githubworkflow.model.DownloadException;
+import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
+import com.intellij.openapi.project.ProjectUtil;
+import com.intellij.openapi.vfs.VirtualFile;
+
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.ACTION_CACHE;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_ONE_DAY;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_TEN_MINUTES;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_INPUTS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_OUTPUTS;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor.project;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.downloadAction;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.orEmpty;
 import static java.util.Optional.ofNullable;
 
 public class GitHubAction {
 
-    private final Map<String, String> inputs = new ConcurrentHashMap<>();
-    private final Map<String, String> outputs = new ConcurrentHashMap<>();
-    private final AtomicLong expiration = new AtomicLong(0);
-    //TODO: get Tags for autocompletion
-    private final List<String> tags = new CopyOnWriteArrayList<>();
-    private final AtomicReference<String> ref = new AtomicReference<>(null);
-    private final AtomicReference<String> slug = new AtomicReference<>(null);
-    private final AtomicReference<String> actionName = new AtomicReference<>(null);
+	// https://regex101.com/r/DSlmSb/1
+	private static final Pattern PATTERN = Pattern.compile("^(?<name>.+?)/(?<repo>.+?)(/(?<path>.+))?@(?<ref>.+)");
+	private final Map<String, String> inputs = new ConcurrentHashMap<>();
+	private final Map<String, String> outputs = new ConcurrentHashMap<>();
+	private final AtomicLong expiration = new AtomicLong(0);
+	private final AtomicReference<String> name = new AtomicReference<>(null);
+	private final AtomicReference<String> repo = new AtomicReference<>(null);
+	private final AtomicReference<String> path = new AtomicReference<>(null);
+	private final AtomicReference<String> ref = new AtomicReference<>(null);
+	private boolean local;
 
-    public static GitHubAction getGitHubAction(final String uses) {
-        try {
-            GitHubAction gitHubAction = ACTION_CACHE.getOrDefault(uses, null);
-            if (gitHubAction == null || gitHubAction.expiration() < System.currentTimeMillis()) {
-                gitHubAction = new GitHubAction(uses);
-                ACTION_CACHE.put(uses, gitHubAction);
-            }
-            return gitHubAction;
-        } catch (Exception e) {
-            return new GitHubAction(null);
-        }
-    }
+	/**
+	 * There are some cases:
+	 * <br>
+	 * <a href="https://docs.github.com/en/actions/using-workflows/reusing-workflows">Calling a reusable workflow</a>
+	 * <br>
+	 * 1. `{owner}/{repo}/.github/workflows/{filename}@{ref}`
+	 * <br>
+	 * 2. `./.github/workflows/{filename}`
+	 * <br>
+	 * <a href="https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsuses">Use action</a>
+	 * <p>
+	 * 1. `{owner}/{repo}@{ref}`
+	 * <p>
+	 * 2. `{owner}/{repo}/{path}@{ref}`
+	 * <p>
+	 * 3. `./path/to/dir`
+	 * <p>
+	 * 4. `docker://{image}:{tag}`
+	 * <p>
+	 * 5. ⛔`docker://{host}/{image}:{tag}`
+	 * <p>
+	 * 6. ⛔`docker://{host}/{image}:{tag}`
+	 * <p>
+	 * so we can set a map to self define GitHub Token with repo and have a default to mapping else
+	 */
+	private GitHubAction(final String uses) {
+		if (uses != null) {
 
-    public Map<String, String> inputs() {
-        return inputs;
-    }
+			if (uses.contains("docker")) {
+				return;
+			}
 
-    public Map<String, String> outputs() {
-        return outputs;
-    }
+			boolean isAction = !uses.contains("/workflows/");
+			if (uses.charAt(0) == '.') {
+				String path = uses;
+				if (isAction) {
+					path += "/action.yml";
+				}
+				this.name.set("local");
+				this.repo.set(project.get().getName());
+				this.path.set(path);
+				this.local = true;
+				// relative path, can directly download
+				setActionParameters(isAction);
+				return;
+			}
 
-    public long expiration() {
-        return expiration.get();
-    }
+			Matcher matcher = PATTERN.matcher(uses);
+			if (!matcher.matches()) {
+				return;
+			}
+			String username = matcher.group("name");
+			String repo = matcher.group("repo");
+			String path = matcher.group("path");
+			String ref = matcher.group("ref");
 
-    public List<String> tags() {
-        return tags;
-    }
+			this.name.set(username);
+			this.repo.set(repo);
+			this.ref.set(ref);
+			// compatible with workflow and action
+			if (path == null) {
+				path = "action.yml";
+			} else if (!path.endsWith(".yml") && !path.endsWith(".yaml")) {
+				path += "/action.yml";
+			}
+			this.path.set(path);
+			setActionParameters(isAction);
+		}
+	}
 
-    public String ref() {
-        return ref.get();
-    }
+	private static String getLocalFile(String relativePath) {
+		VirtualFile root = ProjectUtil.guessProjectDir(project.get());
+		if (root == null) {
+			return null;
+		}
+		VirtualFile action = root.findFileByRelativePath(relativePath);
+		if (action == null) {
+			return null;
+		}
+		return LoadTextUtil.loadText(action).toString();
+	}
 
-    public String slug() {
-        return slug.get();
-    }
+	public static GitHubAction getGitHubAction(final String uses) {
+		try {
+			GitHubAction gitHubAction = ACTION_CACHE.getOrDefault(uses, null);
+			if (gitHubAction == null || gitHubAction.expiration() < System.currentTimeMillis()) {
+				gitHubAction = new GitHubAction(uses);
+				ACTION_CACHE.put(uses, gitHubAction);
+			}
+			return gitHubAction;
+		} catch (Exception e) {
+			return new GitHubAction(null);
+		}
+	}
 
-    public String actionName() {
-        return actionName.get();
-    }
+	public boolean isLocal() {
+		return this.local;
+	}
 
-    private String toActionYamlUrl() {
-        return (ref.get() != null && slug.get() != null) ? "https://raw.githubusercontent.com/" + slug.get() + "/" + ref.get() + "/action.yml" : null;
-    }
+	public String name() {
+		return name.get();
+	}
 
-    private String toWorkflowYamlUrl() {
-        return (ref.get() != null && slug.get() != null) ? "https://raw.githubusercontent.com/" + slug.get() + "/" + ref.get() + "/.github/workflows/" + actionName : null;
-    }
+	public String repo() {
+		return repo.get();
+	}
 
-    private String toMarketplaceUrl() {
-        return (actionName.get() != null && ref.get() != null) ? "https://github.com/marketplace/actions/" + actionName.get() + "/" + ref.get() + "/action.yml" : null;
-    }
+	public String path() {
+		return path.get();
+	}
 
-    private String toGitHubUrl() {
-        return (slug.get() != null && ref.get() != null) ? "https://github.com/" + slug.get() + "/tree" + ref.get() : null;
-    }
+	public Map<String, String> inputs() {
+		return inputs;
+	}
 
-    private GitHubAction(final String uses) {
-        if (uses != null) {
-            final int tagIndex = uses.indexOf("@");
-            final int userNameIndex = uses.indexOf("/");
-            final int repoNameIndex = uses.indexOf("/", userNameIndex + 1);
+	public Map<String, String> outputs() {
+		return outputs;
+	}
 
-            if (tagIndex != -1 && userNameIndex < tagIndex) {
-                ref.set(uses.substring(tagIndex + 1));
-                if (repoNameIndex != -1) {
-                    slug.set(uses.substring(0, repoNameIndex));
-                    actionName.set(uses.substring(uses.lastIndexOf("/") + 1, tagIndex));
-                    setActionParameters(toWorkflowYamlUrl(), false);
-                } else {
-                    slug.set(uses.substring(0, tagIndex));
-                    actionName.set(uses.substring(userNameIndex + 1, tagIndex));
-                    setActionParameters(toActionYamlUrl(), true);
-                }
-            }
-        }
-    }
+	public long expiration() {
+		return expiration.get();
+	}
 
-    private void setActionParameters(final String downloadUrl, final boolean isAction) {
-        try {
-            extractActionParameters(downloadAction(downloadUrl, this), isAction);
-            expiration.set(System.currentTimeMillis() + CACHE_ONE_DAY);
-        } catch (Exception e) {
-            expiration.set(System.currentTimeMillis() + CACHE_TEN_MINUTES);
-        }
-    }
+	public String ref() {
+		return ref.get();
+	}
 
-    private void extractActionParameters(final String content, final boolean isAction) {
-        final WorkflowFile workflowFile = WorkflowFile.workflowFileOf(actionName() + "_" + ref(), content);
-        inputs.putAll(getActionParameters(workflowFile, FIELD_INPUTS, isAction));
-        outputs.putAll(getActionParameters(workflowFile, FIELD_OUTPUTS, isAction));
-    }
+	private void setActionParameters(final boolean isAction) {
+		try {
+			Supplier<String> downloader;
+
+			if (local) {
+				downloader = () -> getLocalFile(this.path());
+			} else {
+				downloader = () -> {
+					RepositoryContentRequest request = RepositoryContentRequest.get(
+						this.name(),
+						this.repo(),
+						this.path(),
+						this.ref()
+					);
+					try {
+						return RepositoryContentRequest.execute(request);
+					} catch (IOException e) {
+						throw new DownloadException(e);
+					}
+				};
+			}
+
+			extractActionParameters(downloadAction(downloader, this), isAction);
+			expiration.set(System.currentTimeMillis() + CACHE_ONE_DAY);
+		} catch (Exception e) {
+			expiration.set(System.currentTimeMillis() + CACHE_TEN_MINUTES);
+		}
+	}
+
+	private void extractActionParameters(final String content, final boolean isAction) {
+		final WorkflowFile workflowFile = WorkflowFile.workflowFileOf(toString(), content);
+		inputs.putAll(getActionParameters(workflowFile, FIELD_INPUTS, isAction));
+		outputs.putAll(getActionParameters(workflowFile, FIELD_OUTPUTS, isAction));
+	}
 
 
-    private Map<String, String> getActionParameters(final WorkflowFile workflowFile, final String node, final boolean action) {
-        return workflowFile.nodesToMap(
-                node, n -> action || (ofNullable(n.parent()).map(YamlNode::parent).map(YamlNode::parent).filter(parent -> "on".equals(parent.name) || "true".equals(parent.name)).isPresent()),
-                n -> orEmpty(n.name()),
-                GitHubWorkflowUtils::getDescription
-        );
-    }
+	private Map<String, String> getActionParameters(final WorkflowFile workflowFile, final String node, final boolean action) {
+		return workflowFile.nodesToMap(
+			node, n -> action || (ofNullable(n.parent()).map(YamlNode::parent).map(YamlNode::parent).filter(parent -> "on".equals(parent.name) || "true".equals(parent.name)).isPresent()),
+			n -> orEmpty(n.name()),
+			GitHubWorkflowUtils::getDescription
+		);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(
+			this.name() + "_" + this.repo()
+		);
+		if (this.path() != null) {
+			sb.append(this.path().replace("action.yml", "")
+				.replace("/", "_").replace(".", "_"));
+		}
+		if (this.ref() != null) {
+			sb.append("_").append(this.ref());
+		}
+		return sb.toString();
+	}
 }

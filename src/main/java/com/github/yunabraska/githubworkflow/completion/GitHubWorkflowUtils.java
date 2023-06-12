@@ -38,9 +38,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_ONE_DAY;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.PATTERN_GITHUB_ENV;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.PATTERN_GITHUB_OUTPUT;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
 import static java.util.Optional.ofNullable;
 
 public class GitHubWorkflowUtils {
@@ -201,26 +199,28 @@ public class GitHubWorkflowUtils {
             final Path path = TMP_DIR.resolve(name + "_schema.json");
             final VirtualFile newVirtualFile = new LightVirtualFile("github_workflow_plugin_" + path.getFileName().toString(), JsonFileType.INSTANCE, "");
             //FIXME: how to use the intellij idea cache?
-            VfsUtil.saveText(newVirtualFile, downloadContent(url, path, CACHE_ONE_DAY * 30));
+            VfsUtil.saveText(newVirtualFile, downloadContent(() -> downloadContent(url), path, CACHE_ONE_DAY * 30));
             return newVirtualFile;
         } catch (Exception ignored) {
             return null;
         }
     }
 
-    public static String downloadAction(final String url, final GitHubAction gitHubAction) {
-        return downloadContent(url, TMP_DIR.resolve(gitHubAction.actionName() + "_" + gitHubAction.ref() + "_schema.json"), CACHE_ONE_DAY * 14);
+    // FIXME:
+    public static String downloadAction(Supplier<String> downloader, final GitHubAction gitHubAction) {
+        return downloadContent(downloader, TMP_DIR.resolve(gitHubAction.toString() + "_schema.json"), CACHE_ONE_DAY * 14);
     }
 
-    public static String downloadContent(final String url, final Path path, final long expirationTime) {
+    public static String downloadContent(Supplier<String> downloader, final Path path, final long expirationTime) {
         try {
-            return downloadContentAsync(url, path, expirationTime).get();
+            return downloadContentAsync(downloader, path, expirationTime).get();
         } catch (Exception e) {
             throw new DownloadException(e);
         }
     }
 
-    private static CompletableFuture<String> downloadContentAsync(final String url, final Path path, final long expirationTime) {
+    // FIXME: using event and listener
+    private static CompletableFuture<String> downloadContentAsync(Supplier<String> downloader, final Path path, final long expirationTime) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (Files.exists(path) && (expirationTime < 1 || Files.getLastModifiedTime(path).toMillis() > System.currentTimeMillis() - expirationTime)) {
@@ -230,7 +230,7 @@ public class GitHubWorkflowUtils {
                     if (!Files.exists(path.getParent())) {
                         Files.createDirectories(path.getParent());
                     }
-                    final String content = downloadContent(url);
+                    final String content = downloader.get();
                     Files.write(path, content.getBytes());
                     return content;
                 }

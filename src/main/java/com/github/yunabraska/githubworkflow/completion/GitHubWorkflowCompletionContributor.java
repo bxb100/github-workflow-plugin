@@ -1,35 +1,25 @@
 package com.github.yunabraska.githubworkflow.completion;
 
-import com.intellij.codeInsight.completion.CompletionContributor;
-import com.intellij.codeInsight.completion.CompletionParameters;
-import com.intellij.codeInsight.completion.CompletionProvider;
-import com.intellij.codeInsight.completion.CompletionResultSet;
-import com.intellij.codeInsight.completion.CompletionType;
+import com.intellij.codeInsight.completion.*;
 import com.intellij.codeInsight.completion.impl.CamelHumpMatcher;
 import com.intellij.codeInsight.lookup.LookupElement;
+import com.intellij.openapi.project.Project;
 import com.intellij.patterns.PlatformPatterns;
+import com.intellij.psi.PsiElement;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.yaml.YAMLLanguage;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.github.yunabraska.githubworkflow.completion.CompletionItem.*;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.addLookupElements;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.getCaretBracketItem;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.getWorkflowFile;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_ENV;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_JOB;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_NODE;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_OUTPUT;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.*;
+import static com.github.yunabraska.githubworkflow.completion.NodeIcon.*;
 import static java.util.Collections.singletonList;
 import static java.util.Optional.ofNullable;
 
@@ -39,55 +29,63 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
         extend(CompletionType.BASIC, PlatformPatterns.psiElement(), completionProvider());
     }
 
+	static AtomicReference<Project> project = new AtomicReference<>(null);
+
     @NotNull
     private static CompletionProvider<CompletionParameters> completionProvider() {
-        return new CompletionProvider() {
-            @Override
-            public void addCompletions(
-                    @NotNull final CompletionParameters parameters,
-                    @NotNull final ProcessingContext context,
-                    @NotNull final CompletionResultSet resultSet
-            ) {
-                getWorkflowFile(parameters.getPosition()).ifPresent(path -> {
-                    //CACHE USE ONLY ON NEED
-                    final AtomicReference<WorkflowFile> partCache = new AtomicReference<>(null);
-                    final AtomicReference<WorkflowFile> fullCache = new AtomicReference<>(null);
-                    final Supplier<WorkflowFile> partFile = fromPartCache(partCache, path, parameters);
-                    final Supplier<WorkflowFile> fullFile = fromFullCache(partCache, fullCache, path, parameters);
+		return new CompletionProvider<>() {
+			@Override
+			public void addCompletions(
+				@NotNull final CompletionParameters parameters,
+				@NotNull final ProcessingContext context,
+				@NotNull final CompletionResultSet resultSet
+			) {
+				PsiElement position = parameters.getPosition();
+				if (!position.getLanguage().isKindOf(YAMLLanguage.INSTANCE)) {
+					return;
+				}
+				project.set(position.getProject());
+				// parameters 是当前指针的 PSI
+				getWorkflowFile(position).ifPresent(path -> {
+					//CACHE USE ONLY ON NEED
+					// FIXME: 我感觉这里应该有更优雅的 cache 方式
+					final AtomicReference<WorkflowFile> partCache = new AtomicReference<>(null);
+					final AtomicReference<WorkflowFile> fullCache = new AtomicReference<>(null);
+					final Supplier<WorkflowFile> partFile = fromPartCache(partCache, path, parameters);
+					final Supplier<WorkflowFile> fullFile = fromFullCache(partCache, fullCache, path, parameters);
 
-
-                    final String[] prefix = new String[]{""};
-                    final Optional<String[]> caretBracketItem = getCaretBracketItem(parameters, partFile, prefix);
-                    final CompletionResultSet resultSetPrefix = resultSet.withPrefixMatcher(new CamelHumpMatcher(prefix[0]));
-                    caretBracketItem.ifPresent(cbi -> {
-                        final Map<Integer, List<CompletionItem>> completionResultMap = new HashMap<>();
-                        for (int i = 0; i < cbi.length; i++) {
-                            //DON'T AUTO COMPLETE WHEN PREVIOUS ITEM IS NOT VALID
-                            final List<CompletionItem> previousCompletions = ofNullable(completionResultMap.getOrDefault(i - 1, null)).orElseGet(ArrayList::new);
-                            final int index = i;
-                            if (i != 0 && (previousCompletions.isEmpty() || previousCompletions.stream().noneMatch(item -> item.key().equals(cbi[index])))) {
-                                return;
-                            } else {
-                                addCompletionItems(cbi, i, partFile, fullFile, completionResultMap);
-                            }
-                        }
-                        //ADD LOOKUP ELEMENTS
-                        ofNullable(completionResultMap.getOrDefault(cbi.length - 1, null))
-                                .map(GitHubWorkflowCompletionContributor::toLookupItems)
-                                .ifPresent(resultSetPrefix::addAllElements);
-                    });
-                    //ACTIONS && WORKFLOWS
-                    if (!caretBracketItem.isPresent()) {
-                        if (FIELD_NEEDS.equals(partFile.get().getCurrentNode().name())) {
-                            Optional.of(listNeeds(partFile, fullFile)).filter(cil -> !cil.isEmpty())
-                                    .map(GitHubWorkflowCompletionContributor::toLookupItems)
-                                    .ifPresent(resultSetPrefix::addAllElements);
-                        } else {
-                            //TODO: AutoCompletion middle?
-                            partFile.get().getActionInputs().ifPresent(map -> addLookupElements(resultSet, map, NodeIcon.ICON_INPUT, ':'));
-                        }
-                    }
-                });
+					final String[] prefix = new String[]{""};
+					final Optional<String[]> caretBracketItem = getCaretBracketItem(parameters, partFile, prefix);
+					final CompletionResultSet resultSetPrefix = resultSet.withPrefixMatcher(new CamelHumpMatcher(prefix[0]));
+					caretBracketItem.ifPresent(cbi -> {
+						final Map<Integer, List<CompletionItem>> completionResultMap = new HashMap<>();
+						for (int i = 0; i < cbi.length; i++) {
+							//DON'T AUTO COMPLETE WHEN PREVIOUS ITEM IS NOT VALID
+							final List<CompletionItem> previousCompletions = ofNullable(completionResultMap.getOrDefault(i - 1, null)).orElseGet(ArrayList::new);
+							final int index = i;
+							if (i != 0 && (previousCompletions.isEmpty() || previousCompletions.stream().noneMatch(item -> item.key().equals(cbi[index])))) {
+								return;
+							} else {
+								addCompletionItems(cbi, i, partFile, fullFile, completionResultMap);
+							}
+						}
+						//ADD LOOKUP ELEMENTS
+						ofNullable(completionResultMap.getOrDefault(cbi.length - 1, null))
+							.map(GitHubWorkflowCompletionContributor::toLookupItems)
+							.ifPresent(resultSetPrefix::addAllElements);
+					});
+					//ACTIONS && WORKFLOWS
+					if (caretBracketItem.isEmpty()) {
+						if (FIELD_NEEDS.equals(partFile.get().getCurrentNode().name())) {
+							Optional.of(listNeeds(partFile, fullFile)).filter(cil -> !cil.isEmpty())
+								.map(GitHubWorkflowCompletionContributor::toLookupItems)
+								.ifPresent(resultSetPrefix::addAllElements);
+						} else {
+							//TODO: AutoCompletion middle?
+							partFile.get().getActionInputs().ifPresent(map -> addLookupElements(resultSet, map, NodeIcon.ICON_INPUT, ':'));
+						}
+					}
+				});
             }
 
             private Supplier<WorkflowFile> fromPartCache(final AtomicReference<WorkflowFile> partCache, final Path path, final CompletionParameters parameters) {
