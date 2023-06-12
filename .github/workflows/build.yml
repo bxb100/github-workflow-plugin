@@ -68,7 +68,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "name=$NAME" >> $GITHUB_OUTPUT
           echo "pluginVerifierHomeDir=~/.pluginVerifier" >> $GITHUB_OUTPUT
-          
+
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -115,6 +115,8 @@ jobs:
       # Run Qodana inspections
       - name: Qodana - Code Inspection
         uses: JetBrains/qodana-action@v2022.3.4
+        env:
+            QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
       # Prepare plugin archive content for creating artifact
       - name: Prepare Plugin Artifact
