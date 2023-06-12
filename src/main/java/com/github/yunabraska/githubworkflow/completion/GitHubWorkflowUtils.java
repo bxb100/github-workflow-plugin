@@ -235,7 +235,7 @@ public class GitHubWorkflowUtils {
                     return content;
                 }
             } catch (Exception e) {
-                LOG.error("Cache failed for [" + path + "] message [" + (e instanceof NullPointerException ? null : e.getMessage()) + "]");
+                LOG.error("Cache failed for [" + path + "] message [" + e.getClass().getName() + "]", e);
                 return "";
             }
         });
@@ -252,7 +252,7 @@ public class GitHubWorkflowUtils {
                 }
                 return contentBuilder.toString();
             } catch (IOException e) {
-                LOG.error("Failed to read file [" + path + "] message [" + e.getMessage() + "]");
+				LOG.error("Failed to read file [" + path + "] message [" + e.getMessage() + "]", e);
                 return "";
             }
         });
@@ -260,20 +260,20 @@ public class GitHubWorkflowUtils {
 
 
     private static String downloadContent(final String urlString) {
-        LOG.info("Download [" + urlString + "]");
-        try {
-            final ApplicationInfo applicationInfo = ApplicationInfo.getInstance();
-            return ApplicationManager.getApplication().executeOnPooledThread(() -> HttpRequests
-                    .request(urlString)
-                    .gzip(true)
-                    .readTimeout(5000)
-                    .connectTimeout(5000)
-                    .userAgent(applicationInfo.getBuild().getProductCode() + "/" + applicationInfo.getFullVersion()).tuner(request -> request.setRequestProperty("Client-Name", "GitHub Workflow Plugin")).readString()).get();
-        } catch (Exception e) {
-            LOG.error("Download failed for [" + urlString + "] message [" + (e instanceof NullPointerException ? null : e.getMessage()) + "]");
-        }
-        return "";
-    }
+		LOG.info("Download [" + urlString + "]");
+		try {
+			final ApplicationInfo applicationInfo = ApplicationInfo.getInstance();
+			return ApplicationManager.getApplication().executeOnPooledThread(() -> HttpRequests
+				.request(urlString)
+				.gzip(true)
+				.readTimeout(5000)
+				.connectTimeout(5000)
+				.userAgent(applicationInfo.getBuild().getProductCode() + "/" + applicationInfo.getFullVersion()).tuner(request -> request.setRequestProperty("Client-Name", "GitHub Workflow Plugin")).readString()).get();
+		} catch (Exception e) {
+			LOG.error("Download failed for [" + urlString + "] message [" + e.getClass().getName() + "]", e);
+		}
+		return "";
+	}
 
     public static Optional<Path> getWorkflowFile(final PsiElement psiElement) {
         return Optional.ofNullable(psiElement)

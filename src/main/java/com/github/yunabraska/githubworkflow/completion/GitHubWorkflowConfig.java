@@ -8,28 +8,28 @@ import java.util.regex.Pattern;
 
 public class GitHubWorkflowConfig {
 
-    public static final Pattern PATTERN_GITHUB_OUTPUT = Pattern.compile("echo\\s+\"(.*?)=(.*?)\"\\s*>>\\s*\"?\\$\\{?GITHUB_OUTPUT\\}?\"?");
-    public static final Pattern PATTERN_GITHUB_ENV = Pattern.compile("echo\\s+\"(.*?)=(.*?)\"\\s*>>\\s*\"?\\$\\{?GITHUB_ENV\\}?\"?");
-    public static final long CACHE_ONE_DAY = 24L * 60 * 60 * 1000;
-    public static final long CACHE_TEN_MINUTES = 600000;
-    public static final String FIELD_ENVS = "env";
-    public static final String FIELD_RUN = "run";
-    public static final String FIELD_JOBS = "jobs";
-    public static final String FIELD_VARS = "vars";
-    public static final String FIELD_USES = "uses";
-    public static final String FIELD_NEEDS = "needs";
-    public static final String FIELD_STEPS = "steps";
-    public static final String FIELD_GITHUB = "github";
-    public static final String FIELD_DEFAULT = "${{}}";
-    public static final String FIELD_INPUTS = "inputs";
-    public static final String FIELD_OUTPUTS = "outputs";
-    public static final String FIELD_SECRETS = "secrets";
-    protected static final Map<String, Supplier<Map<String, String>>> DEFAULT_VALUE_MAP = initProcessorMap();
-    protected static final Map<String, GitHubAction> ACTION_CACHE = new ConcurrentHashMap<>();
-    protected static final Map<String, WorkflowFile> WORKFLOW_CACHE = new ConcurrentHashMap<>();
+	public static final Pattern PATTERN_GITHUB_OUTPUT = Pattern.compile("echo\\s+\"(.*?)=(.*?)\"\\s*>>\\s*\"?\\$\\{?GITHUB_OUTPUT}?\"?");
+	public static final Pattern PATTERN_GITHUB_ENV = Pattern.compile("echo\\s+\"(.*?)=(.*?)\"\\s*>>\\s*\"?\\$\\{?GITHUB_ENV}?\"?");
+	public static final long CACHE_ONE_DAY = 24L * 60 * 60 * 1000;
+	public static final long CACHE_TEN_MINUTES = 600000;
+	public static final String FIELD_ENVS = "env";
+	public static final String FIELD_RUN = "run";
+	public static final String FIELD_JOBS = "jobs";
+	public static final String FIELD_VARS = "vars";
+	public static final String FIELD_USES = "uses";
+	public static final String FIELD_NEEDS = "needs";
+	public static final String FIELD_STEPS = "steps";
+	public static final String FIELD_GITHUB = "github";
+	public static final String FIELD_DEFAULT = "${{}}";
+	public static final String FIELD_INPUTS = "inputs";
+	public static final String FIELD_OUTPUTS = "outputs";
+	public static final String FIELD_SECRETS = "secrets";
+	protected static final Map<String, Supplier<Map<String, String>>> DEFAULT_VALUE_MAP = initProcessorMap();
+	protected static final Map<String, GitHubAction> ACTION_CACHE = new ConcurrentHashMap<>();
+	protected static final Map<String, WorkflowFile> WORKFLOW_CACHE = new ConcurrentHashMap<>();
 
-    private static Map<String, Supplier<Map<String, String>>> initProcessorMap() {
-        final Map<String, Supplier<Map<String, String>>> result = new HashMap<>();
+	private static Map<String, Supplier<Map<String, String>>> initProcessorMap() {
+		final Map<String, Supplier<Map<String, String>>> result = new HashMap<>();
         result.put(FIELD_GITHUB, GitHubWorkflowConfig::getGitHubContextEnvs);
         result.put(FIELD_ENVS, GitHubWorkflowConfig::getGitHubEnvs);
         result.put(FIELD_DEFAULT, GitHubWorkflowConfig::getCaretBracketItems);
