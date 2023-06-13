@@ -7,14 +7,15 @@ import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.impl.CamelHumpMatcher;
 import com.intellij.codeInsight.lookup.LookupElement;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.yaml.YAMLTokenTypes;
+import org.jetbrains.yaml.YAMLUtil;
+import org.jetbrains.yaml.psi.YAMLPsiElement;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -59,6 +60,7 @@ import static java.util.Optional.ofNullable;
 
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
+    private static final Logger LOG = Logger.getInstance(GitHubWorkflowCompletionContributor.class);
     static AtomicReference<Project> project = new AtomicReference<>(null);
 
     public GitHubWorkflowCompletionContributor() {
@@ -76,6 +78,10 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
             ) {
                 PsiElement position = parameters.getPosition();
                 project.set(position.getProject());
+                if (!position.isValid()) {
+                    LOG.error("current PsiElement not valid: " + position);
+                    return;
+                }
 
                 // parameters 是当前指针的 PSI
                 getWorkflowFile(position).ifPresent(path -> {
@@ -113,13 +119,15 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                                     .map(GitHubWorkflowCompletionContributor::toLookupItems)
                                     .ifPresent(resultSetPrefix::addAllElements);
                         } else {
-                            PsiElement parent = position.getParent();
                             // skip `a: *<crater>` PS: `with:(EOF)` (just discuss normal YAML)
-                            PsiElement backwardSibling = PsiTreeUtil.findSiblingBackward(parent, YAMLTokenTypes.COLON, null);
-                            if (backwardSibling != null) {
-                                if (backwardSibling.getNextSibling() instanceof PsiWhiteSpace) {
-                                    return;
-                                }
+                            YAMLPsiElement parent = PsiTreeUtil.getParentOfType(position, YAMLPsiElement.class);
+                            if (parent == null) {
+                                return;
+                            }
+                            // idea: https://intellij-support.jetbrains.com/hc/en-us/community/posts/360000333580-How-to-find-value-by-key-in-YML-file
+                            String qualifiedName = YAMLUtil.getConfigFullName(parent);
+                            if (!qualifiedName.endsWith(".with") || qualifiedName.endsWith(".with.with")) {
+                                return;
                             }
                             //TODO: AutoCompletion middle?
                             partFile.get().getActionInputs().ifPresent(map -> addLookupElements(resultSet, map, NodeIcon.ICON_INPUT, ':'));

@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
@@ -199,6 +199,7 @@ public class GitHubWorkflowUtils {
         newOffset += toInsert.length();
         // Update caret position
         ctx.getEditor().getCaretModel().moveToOffset(newOffset);
+        ctx.commitDocument();
     }
 
     public static VirtualFile downloadSchema(final String url, final String name) {
@@ -226,8 +227,9 @@ public class GitHubWorkflowUtils {
     }
 
     // FIXME: using event and listener
-    private static CompletableFuture<String> downloadContentAsync(Supplier<String> downloader, final Path path, final long expirationTime) {
-        return CompletableFuture.supplyAsync(() -> {
+    private static Future<String> downloadContentAsync(Supplier<String> downloader, final Path path, final long expirationTime) {
+
+        return ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 if (Files.exists(path) && (expirationTime < 1 || Files.getLastModifiedTime(path).toMillis() > System.currentTimeMillis() - expirationTime)) {
                     LOG.info("Cache load [" + path + "] expires in [" + (System.currentTimeMillis() - expirationTime) + "ms]");
@@ -237,6 +239,9 @@ public class GitHubWorkflowUtils {
                         Files.createDirectories(path.getParent());
                     }
                     final String content = downloader.get();
+                    if (content == null) {
+                        return "";
+                    }
                     Files.write(path, content.getBytes());
                     return content;
                 }
@@ -247,8 +252,8 @@ public class GitHubWorkflowUtils {
         });
     }
 
-    public static CompletableFuture<String> readFileAsync(final Path path) {
-        return CompletableFuture.supplyAsync(() -> {
+    public static Future<String> readFileAsync(final Path path) {
+        return ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try (final BufferedReader reader = Files.newBufferedReader(path, Charset.defaultCharset())) {
                 final StringBuilder contentBuilder = new StringBuilder();
                 String line;

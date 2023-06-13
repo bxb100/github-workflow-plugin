@@ -48,8 +48,7 @@ public class RepositoryContentRequest extends GithubApiRequest.Get<String> {
                 .getNotificationGroup("GitHub Token NotExist")
                 .createNotification("No GitHub account found", NotificationType.ERROR)
                 .notify(project);
-
-        throw new DownloadException(new RuntimeException("No GitHub account found"));
+        return null;
     }
 
     public static @NotNull RepositoryContentRequest get(

@@ -136,6 +136,7 @@ public class WorkflowFile {
     }
 
     public Optional<Map<String, String>> getActionInputs() {
+        // FIXME: over the `with: xxx` type will cause error behavior
         final YamlNode lastChild = getLastChild(yaml());
         final YamlNode withChild = Optional.of(lastChild).filter(n -> "with".equals(n.name())).orElseGet(() -> Optional.ofNullable(lastChild.parent()).filter(n -> "with".equals(n.name())).orElse(null));
         return ofNullable(withChild)
