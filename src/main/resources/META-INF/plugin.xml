@@ -10,7 +10,7 @@
 
 	<extensions defaultExtensionNs="com.intellij">
 
-		<completion.contributor language="any"
+		<completion.contributor language="yaml"
 								implementationClass="com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor"/>
 
 	</extensions>

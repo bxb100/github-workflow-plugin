@@ -2,6 +2,7 @@ package com.github.yunabraska.githubworkflow.completion;
 
 import com.github.yunabraska.githubworkflow.api.RepositoryContentRequest;
 import com.github.yunabraska.githubworkflow.model.DownloadException;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
 import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -16,12 +17,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor.project;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.ACTION_CACHE;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_ONE_DAY;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_TEN_MINUTES;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_INPUTS;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_OUTPUTS;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.downloadAction;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.orEmpty;
 import static java.util.Optional.ofNullable;
 
 public class GitHubAction {
+
+	private static final Logger LOGGER = Logger.getInstance(GitHubAction.class);
 
 	// https://regex101.com/r/DSlmSb/1
 	private static final Pattern PATTERN = Pattern.compile("^(?<name>.+?)/(?<repo>.+?)(/(?<path>.+))?@(?<ref>.+)");
@@ -90,6 +97,7 @@ public class GitHubAction {
 			String path = matcher.group("path");
 			String ref = matcher.group("ref");
 
+			this.local = false;
 			this.name.set(username);
 			this.repo.set(repo);
 			this.ref.set(ref);
@@ -178,6 +186,7 @@ public class GitHubAction {
 					try {
 						return RepositoryContentRequest.execute(request);
 					} catch (IOException e) {
+						LOGGER.error("Failed to download action.yml", e);
 						throw new DownloadException(e);
 					}
 				};
