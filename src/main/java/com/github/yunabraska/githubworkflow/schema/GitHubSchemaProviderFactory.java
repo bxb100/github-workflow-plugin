@@ -13,19 +13,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class GitHubSchemaProviderFactory implements JsonSchemaProviderFactory {
 
-	public static final Map<String, VirtualFile> GITHUB_SCHEMA_CACHE = new ConcurrentHashMap<>();
+    public static final Map<String, VirtualFile> GITHUB_SCHEMA_CACHE = new ConcurrentHashMap<>();
 
-	@NotNull
-	@Override
-	public List<JsonSchemaFileProvider> getProviders(@NotNull final Project project) {
-		return Arrays.asList(
-			new GitHubActionSchemaProvider(),
-			new GitHubFoundingSchemaProvider(),
-			new GitHubWorkflowSchemaProvider(),
-			new GitHubDiscussionSchemaProvider(),
-			new GitHubIssueFormsSchemaProvider(),
-			new GitHubIssueConfigSchemaProvider(),
-			new GitHubWorkflowTemplateSchemaProvider()
-		);
-	}
+    @NotNull
+    @Override
+    public List<JsonSchemaFileProvider> getProviders(@NotNull final Project project) {
+        return Arrays.asList(
+                new GitHubActionSchemaProvider(),
+                new GitHubFoundingSchemaProvider(),
+                new GitHubWorkflowSchemaProvider(),
+                new GitHubDiscussionSchemaProvider(),
+                new GitHubIssueFormsSchemaProvider(),
+                new GitHubIssueConfigSchemaProvider(),
+                new GitHubWorkflowTemplateSchemaProvider()
+        );
+    }
 }

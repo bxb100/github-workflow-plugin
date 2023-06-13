@@ -23,58 +23,56 @@ import java.util.Set;
  */
 public class RepositoryContentRequest extends GithubApiRequest.Get<String> {
 
-	public RepositoryContentRequest(@NotNull String url) {
-		super(url, "application/vnd.github.raw");
-	}
+    public RepositoryContentRequest(@NotNull String url) {
+        super(url, "application/vnd.github.raw");
+    }
 
-	// FIXME
-	public static String execute(
-		RepositoryContentRequest request
-	) throws IOException {
+    // FIXME
+    public static String execute(RepositoryContentRequest request) throws IOException {
 
-		Set<GithubAccount> accounts = GithubAuthenticationManager.getInstance().getAccounts();
+        Set<GithubAccount> accounts = GithubAuthenticationManager.getInstance().getAccounts();
 
-		GithubApiRequestExecutorManager instance = GithubApiRequestExecutorManager.getInstance();
+        GithubApiRequestExecutorManager instance = GithubApiRequestExecutorManager.getInstance();
 
-		java.util.Optional<GithubAccount> optional = accounts.stream().filter(
-			account -> account.getServer().isGithubDotCom()
-		).findFirst();
+        java.util.Optional<GithubAccount> optional = accounts.stream().filter(
+                account -> account.getServer().isGithubDotCom()
+        ).findFirst();
 
-		if (optional.isPresent()) {
-			//		GithubApiRequestExecutor.Factory.Companion.getInstance().create("");
-			return instance.getExecutor(optional.get()).execute(request);
-		}
+        if (optional.isPresent()) {
+            //		GithubApiRequestExecutor.Factory.Companion.getInstance().create("");
+            return instance.getExecutor(optional.get()).execute(request);
+        }
 
-		Project project = ProjectManager.getInstance().getDefaultProject();
-		NotificationGroupManager.getInstance()
-			.getNotificationGroup("GitHub Token NotExist")
-			.createNotification("No GitHub account found", NotificationType.ERROR)
-			.notify(project);
+        Project project = ProjectManager.getInstance().getDefaultProject();
+        NotificationGroupManager.getInstance()
+                .getNotificationGroup("GitHub Token NotExist")
+                .createNotification("No GitHub account found", NotificationType.ERROR)
+                .notify(project);
 
-		throw new DownloadException(new RuntimeException("No GitHub account found"));
-	}
+        throw new DownloadException(new RuntimeException("No GitHub account found"));
+    }
 
-	public static @NotNull RepositoryContentRequest get(
-		@NotNull String owner,
-		@NotNull String repo,
-		@NotNull String path,
-		String ref
-	) {
-		// https://api.github.com/repos/OWNER/REPO/contents/PATH
-		String url = String.format(
-			"https://api.github.com/repos/%s/%s/contents/%s",
-			owner,
-			repo,
-			path
-		);
-		if (StringUtils.isNotBlank(ref)) {
-			url += "?ref=" + ref;
-		}
-		return new RepositoryContentRequest(url);
-	}
+    public static @NotNull RepositoryContentRequest get(
+            @NotNull String owner,
+            @NotNull String repo,
+            @NotNull String path,
+            String ref
+    ) {
+        // https://api.github.com/repos/OWNER/REPO/contents/PATH
+        String url = String.format(
+                "https://api.github.com/repos/%s/%s/contents/%s",
+                owner,
+                repo,
+                path
+        );
+        if (StringUtils.isNotBlank(ref)) {
+            url += "?ref=" + ref;
+        }
+        return new RepositoryContentRequest(url);
+    }
 
-	@Override
-	public String extractResult(@NotNull GithubApiResponse githubApiResponse) throws IOException {
-		return githubApiResponse.handleBody(body -> new String(body.readAllBytes(), StandardCharsets.UTF_8));
-	}
+    @Override
+    public String extractResult(@NotNull GithubApiResponse githubApiResponse) throws IOException {
+        return githubApiResponse.handleBody(body -> new String(body.readAllBytes(), StandardCharsets.UTF_8));
+    }
 }
