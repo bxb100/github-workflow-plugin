@@ -10,8 +10,11 @@ import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.openapi.project.Project;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiWhiteSpace;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.yaml.YAMLTokenTypes;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -73,6 +76,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			) {
 				PsiElement position = parameters.getPosition();
 				project.set(position.getProject());
+
 				// parameters 是当前指针的 PSI
 				getWorkflowFile(position).ifPresent(path -> {
 					//CACHE USE ONLY ON NEED
@@ -109,6 +113,13 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 								.map(GitHubWorkflowCompletionContributor::toLookupItems)
 								.ifPresent(resultSetPrefix::addAllElements);
 						} else {
+							// skip `a: *<crater>` PS: `with:(EOF)` (just discuss normal YAML)
+							PsiElement backwardSibling = PsiTreeUtil.findSiblingBackward(position.getParent(), YAMLTokenTypes.COLON, null);
+							if (backwardSibling != null) {
+								if (backwardSibling.getNextSibling() instanceof PsiWhiteSpace) {
+									return;
+								}
+							}
 							//TODO: AutoCompletion middle?
 							partFile.get().getActionInputs().ifPresent(map -> addLookupElements(resultSet, map, NodeIcon.ICON_INPUT, ':'));
 						}

@@ -172,25 +172,28 @@ public class GitHubWorkflowUtils {
 		int newOffset = startOffset + value.length();
 		final Document document = ctx.getDocument();
 
+		int lineNumber = document.getLineNumber(startOffset);
+		int lineEndOffset = document.getLineEndOffset(lineNumber);
+
 		// Find the start of the identifier
 		final CharSequence documentChars = document.getCharsSequence();
 		// Find the end of the previous value
 		int valueEnd = tailOffset;
-		if (ctx.getCompletionChar() == '\t') {
-			while (valueEnd < documentChars.length() &&
-				documentChars.charAt(valueEnd) != suffix &&
-				documentChars.charAt(valueEnd) != '\n' &&
-				documentChars.charAt(valueEnd) != '\r') {
+		for (; valueEnd < lineEndOffset; valueEnd++) {
+			if (documentChars.charAt(valueEnd) == suffix) {
+				if (valueEnd + 1 < lineEndOffset && documentChars.charAt(valueEnd + 1) == ' ') {
+					valueEnd++;
+				}
 				valueEnd++;
+				break;
 			}
-			valueEnd++;
 		}
 		// Remove the previous value
 		document.deleteString(startOffset, valueEnd);
 		// Insert the new value
 		document.insertString(startOffset, value);
 		// Add ': ' after the inserted value
-		final String toInsert = String.valueOf(suffix);
+		final String toInsert = suffix + " ";
 		document.insertString(startOffset + value.length(), toInsert);
 		newOffset += toInsert.length();
 		// Update caret position
