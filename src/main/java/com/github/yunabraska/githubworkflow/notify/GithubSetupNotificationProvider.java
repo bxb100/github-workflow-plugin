@@ -54,7 +54,7 @@ public class GithubSetupNotificationProvider implements EditorNotificationProvid
             return CONST_NULL;
         }
 
-        Optional<GithubAccount> account = GitHubUtils.getAccount(project);
+        Optional<GithubAccount> account = GitHubUtils.getAccount();
         if (account.isPresent()) {
             return CONST_NULL;
         }

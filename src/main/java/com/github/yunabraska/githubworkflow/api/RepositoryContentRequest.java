@@ -29,7 +29,7 @@ public class RepositoryContentRequest extends GithubApiRequest.Get<String> {
 
         GithubApiRequestExecutorManager instance = GithubApiRequestExecutorManager.getInstance();
 
-        java.util.Optional<GithubAccount> optional = GitHubUtils.getAccount(project);
+        java.util.Optional<GithubAccount> optional = GitHubUtils.getAccount();
 
         if (optional.isPresent()) {
             //		GithubApiRequestExecutor.Factory.Companion.getInstance().create("");
