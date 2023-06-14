@@ -61,7 +61,7 @@ import static java.util.Optional.ofNullable;
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
     private static final Logger LOG = Logger.getInstance(GitHubWorkflowCompletionContributor.class);
-    static AtomicReference<Project> project = new AtomicReference<>(null);
+    public static AtomicReference<Project> project = new AtomicReference<>(null);
 
     public GitHubWorkflowCompletionContributor() {
         extend(CompletionType.BASIC, PlatformPatterns.psiElement(), completionProvider());

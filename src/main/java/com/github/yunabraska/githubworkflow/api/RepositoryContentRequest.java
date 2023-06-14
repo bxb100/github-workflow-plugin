@@ -1,21 +1,18 @@
 package com.github.yunabraska.githubworkflow.api;
 
-import com.github.yunabraska.githubworkflow.model.DownloadException;
+import com.github.yunabraska.githubworkflow.util.GitHubUtils;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectManager;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutorManager;
 import org.jetbrains.plugins.github.api.GithubApiResponse;
-import org.jetbrains.plugins.github.authentication.GithubAuthenticationManager;
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccount;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 
 /**
  * <a href="https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28">repos content</a>
@@ -28,22 +25,22 @@ public class RepositoryContentRequest extends GithubApiRequest.Get<String> {
     }
 
     // FIXME
-    public static String execute(RepositoryContentRequest request) throws IOException {
-
-        Set<GithubAccount> accounts = GithubAuthenticationManager.getInstance().getAccounts();
+    public static String execute(Project project, RepositoryContentRequest request) throws IOException {
 
         GithubApiRequestExecutorManager instance = GithubApiRequestExecutorManager.getInstance();
 
-        java.util.Optional<GithubAccount> optional = accounts.stream().filter(
-                account -> account.getServer().isGithubDotCom()
-        ).findFirst();
+        java.util.Optional<GithubAccount> optional = GitHubUtils.getAccount(project);
 
         if (optional.isPresent()) {
             //		GithubApiRequestExecutor.Factory.Companion.getInstance().create("");
             return instance.getExecutor(optional.get()).execute(request);
         }
 
-        Project project = ProjectManager.getInstance().getDefaultProject();
+        if (project.isDisposed()) {
+            return null;
+        }
+
+        // TODO: remove?
         NotificationGroupManager.getInstance()
                 .getNotificationGroup("GitHub Token NotExist")
                 .createNotification("No GitHub account found", NotificationType.ERROR)

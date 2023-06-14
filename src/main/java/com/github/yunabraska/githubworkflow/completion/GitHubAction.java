@@ -180,7 +180,7 @@ public class GitHubAction {
                             this.ref()
                     );
                     try {
-                        return RepositoryContentRequest.execute(request);
+                        return RepositoryContentRequest.execute(project.get(), request);
                     } catch (IOException e) {
                         LOGGER.error("Failed to download action.yml", e);
                         throw new DownloadException(e);

@@ -30,7 +30,7 @@ Enjoy lightning-fast autocompletion for
   from (https://docs.github.com/en/actions/learn-github-actions/variables#using-the-vars-context-to-access-configuration-variable-values)
 - [ ] Add syntax highlighting
 - [ ] Add GitHub Token map Repo Settings
-- [ ] Notify add jump link
+- [x] Notify add jump link
 
 ## Learning List
 
