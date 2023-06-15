@@ -31,7 +31,7 @@
 
     <actions>
         <action
-                id="ShowGithubSettings"
+                id="githubworkflow.show.github.settings"
                 class="com.github.yunabraska.githubworkflow.notify.ShowGithubSettingsAction"/>
     </actions>
 </idea-plugin>

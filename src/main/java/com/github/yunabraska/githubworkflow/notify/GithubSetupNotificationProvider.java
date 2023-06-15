@@ -33,7 +33,7 @@ public class GithubSetupNotificationProvider implements EditorNotificationProvid
     ) {
         EditorNotificationPanel panel = new EditorNotificationPanel(fileEditor);
         panel.setText(message);
-        panel.createActionLabel(MyBundle.INSTANCE.getMessage("notify.github.setup"), "ShowGithubSettings");
+        panel.createActionLabel(MyBundle.INSTANCE.getMessage("notify.github.setup"), "githubworkflow.show.github.settings");
         return panel;
     }
 
