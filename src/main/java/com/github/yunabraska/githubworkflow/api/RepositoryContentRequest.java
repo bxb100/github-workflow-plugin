@@ -1,6 +1,6 @@
 package com.github.yunabraska.githubworkflow.api;
 
-import com.github.yunabraska.githubworkflow.util.GitHubUtils;
+import com.github.yunabraska.githubworkflow.util.ToolUtils;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.project.Project;
@@ -29,7 +29,7 @@ public class RepositoryContentRequest extends GithubApiRequest.Get<String> {
 
         GithubApiRequestExecutorManager instance = GithubApiRequestExecutorManager.getInstance();
 
-        java.util.Optional<GithubAccount> optional = GitHubUtils.getAccount();
+        java.util.Optional<GithubAccount> optional = ToolUtils.getAccount();
 
         if (optional.isPresent()) {
             //		GithubApiRequestExecutor.Factory.Companion.getInstance().create("");

@@ -15,7 +15,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.yaml.YAMLUtil;
-import org.jetbrains.yaml.psi.YAMLPsiElement;
+import org.jetbrains.yaml.psi.YAMLKeyValue;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,12 +55,14 @@ import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_ENV;
 import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_JOB;
 import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_NODE;
 import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_OUTPUT;
+import static com.intellij.codeInsight.completion.CompletionUtil.DUMMY_IDENTIFIER_TRIMMED;
 import static java.util.Collections.singletonList;
 import static java.util.Optional.ofNullable;
 
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
     private static final Logger LOG = Logger.getInstance(GitHubWorkflowCompletionContributor.class);
+    // FIXME
     public static AtomicReference<Project> project = new AtomicReference<>(null);
 
     public GitHubWorkflowCompletionContributor() {
@@ -120,13 +122,13 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                                     .ifPresent(resultSetPrefix::addAllElements);
                         } else {
                             // skip `a: *<crater>` PS: `with:(EOF)` (just discuss normal YAML)
-                            YAMLPsiElement parent = PsiTreeUtil.getParentOfType(position, YAMLPsiElement.class);
+                            YAMLKeyValue parent = PsiTreeUtil.getParentOfType(position, YAMLKeyValue.class);
                             if (parent == null) {
                                 return;
                             }
                             // idea: https://intellij-support.jetbrains.com/hc/en-us/community/posts/360000333580-How-to-find-value-by-key-in-YML-file
                             String qualifiedName = YAMLUtil.getConfigFullName(parent);
-                            if (!qualifiedName.endsWith(".with") || qualifiedName.endsWith(".with.with")) {
+                            if (!qualifiedName.contains(DUMMY_IDENTIFIER_TRIMMED) && !qualifiedName.endsWith("with")) {
                                 return;
                             }
                             //TODO: AutoCompletion middle?

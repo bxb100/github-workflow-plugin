@@ -2,7 +2,7 @@ package com.github.yunabraska.githubworkflow.notify;
 
 import com.github.yunabraska.githubworkflow.MyBundle;
 import com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils;
-import com.github.yunabraska.githubworkflow.util.GitHubUtils;
+import com.github.yunabraska.githubworkflow.util.ToolUtils;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
@@ -54,7 +54,7 @@ public class GithubSetupNotificationProvider implements EditorNotificationProvid
             return CONST_NULL;
         }
 
-        Optional<GithubAccount> account = GitHubUtils.getAccount();
+        Optional<GithubAccount> account = ToolUtils.getAccount();
         if (account.isPresent()) {
             return CONST_NULL;
         }
