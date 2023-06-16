@@ -12,8 +12,6 @@
 
     <extensions defaultExtensionNs="com.intellij">
 
-        <errorHandler implementation="com.github.yunabraska.githubworkflow.exception.SentryErrorReportSubmitter"/>
-
         <completion.contributor
                 language="yaml"
                 implementationClass="com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor"

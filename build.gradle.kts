@@ -25,9 +25,6 @@ repositories {
 
 dependencies {
 	implementation("org.yaml:snakeyaml:2.0")
-	implementation("io.sentry:sentry:6.23.0") {
-		exclude("org.slf4j")
-	}
 }
 
 // Set the JVM language level used to build the project. Use Java 11 for 2020.3+, and Java 17 for 2022.2+.
