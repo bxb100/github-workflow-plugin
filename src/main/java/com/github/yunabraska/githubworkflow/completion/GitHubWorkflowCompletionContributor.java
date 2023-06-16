@@ -164,28 +164,15 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
     private static void addCompletionItems(final String[] cbi, final int i, final Supplier<WorkflowFile> partFile, final Supplier<WorkflowFile> fullFile, final Map<Integer, List<CompletionItem>> completionItemMap) {
         if (i == 0) {
             switch (cbi[0]) {
-                case FIELD_STEPS:
-                    completionItemMap.put(i, listSteps(partFile, fullFile));
-                    break;
-                case FIELD_JOBS:
-                    completionItemMap.put(i, listJobs(partFile, fullFile));
-                    break;
-                case FIELD_ENVS:
-                    completionItemMap.put(i, listEnvs(partFile, fullFile));
-                    break;
-                case FIELD_GITHUB:
-                    completionItemMap.put(i, completionItemsOf(DEFAULT_VALUE_MAP.get(FIELD_GITHUB).get(), ICON_ENV));
-                    break;
-                case FIELD_INPUTS:
-                    completionItemMap.put(i, listInputs(partFile, fullFile));
-                    break;
-                case FIELD_SECRETS:
-                    completionItemMap.put(i, listSecrets(partFile, fullFile));
-                    break;
-                case FIELD_NEEDS:
-                    completionItemMap.put(i, listJobNeeds(partFile, fullFile));
-                    break;
-                default:
+                case FIELD_STEPS -> completionItemMap.put(i, listSteps(partFile, fullFile));
+                case FIELD_JOBS -> completionItemMap.put(i, listJobs(partFile, fullFile));
+                case FIELD_ENVS -> completionItemMap.put(i, listEnvs(partFile, fullFile));
+                case FIELD_GITHUB ->
+                        completionItemMap.put(i, completionItemsOf(DEFAULT_VALUE_MAP.get(FIELD_GITHUB).get(), ICON_ENV));
+                case FIELD_INPUTS -> completionItemMap.put(i, listInputs(partFile, fullFile));
+                case FIELD_SECRETS -> completionItemMap.put(i, listSecrets(partFile, fullFile));
+                case FIELD_NEEDS -> completionItemMap.put(i, listJobNeeds(partFile, fullFile));
+                default -> {
                     //ON.workflow_call.outputs
                     if (partFile.get().isOutputTriggerNode()) {
                         completionItemMap.put(i, singletonList(completionItemOf(FIELD_JOBS, DEFAULT_VALUE_MAP.get(FIELD_DEFAULT).get().get(FIELD_JOBS), ICON_JOB)));
@@ -196,29 +183,21 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                                 .map(map -> completionItemsOf(map, ICON_NODE))
                                 .ifPresent(items -> completionItemMap.put(i, items));
                     }
-                    break;
+                }
             }
         } else if (i == 1) {
             switch (cbi[0]) {
-                case FIELD_JOBS:
-                case FIELD_NEEDS:
-                case FIELD_STEPS:
-                    completionItemMap.put(i, singletonList(completionItemOf(FIELD_OUTPUTS, "", ICON_OUTPUT)));
-                    break;
-                default:
-                    break;
+                case FIELD_JOBS, FIELD_NEEDS, FIELD_STEPS ->
+                        completionItemMap.put(i, singletonList(completionItemOf(FIELD_OUTPUTS, "", ICON_OUTPUT)));
+                default -> {
+                }
             }
         } else if (i == 2) {
             switch (cbi[0]) {
-                case FIELD_JOBS:
-                case FIELD_NEEDS:
-                    completionItemMap.put(i, listJobOutputs(cbi[1], partFile, fullFile));
-                    break;
-                case FIELD_STEPS:
-                    completionItemMap.put(i, listStepOutputs(cbi[1], partFile, fullFile));
-                    break;
-                default:
-                    break;
+                case FIELD_JOBS, FIELD_NEEDS -> completionItemMap.put(i, listJobOutputs(cbi[1], partFile, fullFile));
+                case FIELD_STEPS -> completionItemMap.put(i, listStepOutputs(cbi[1], partFile, fullFile));
+                default -> {
+                }
             }
         }
     }

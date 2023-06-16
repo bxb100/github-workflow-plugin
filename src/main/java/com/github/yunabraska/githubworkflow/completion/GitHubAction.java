@@ -2,6 +2,7 @@ package com.github.yunabraska.githubworkflow.completion;
 
 import com.github.yunabraska.githubworkflow.api.RepositoryContentRequest;
 import com.github.yunabraska.githubworkflow.model.DownloadException;
+import com.github.yunabraska.githubworkflow.util.ToolUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
 import com.intellij.openapi.project.ProjectUtil;
@@ -17,11 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor.project;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.ACTION_CACHE;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_ONE_DAY;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.CACHE_TEN_MINUTES;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_INPUTS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_OUTPUTS;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.downloadAction;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.orEmpty;
 import static java.util.Optional.ofNullable;
@@ -169,18 +166,18 @@ public class GitHubAction {
         try {
             Supplier<String> downloader;
 
-            if (local) {
+            if (this.local) {
                 downloader = () -> getLocalFile(this.path());
             } else {
                 downloader = () -> {
-                    RepositoryContentRequest request = RepositoryContentRequest.get(
+                    RepositoryContentRequest request = RepositoryContentRequest.request(
                             this.name(),
                             this.repo(),
                             this.path(),
                             this.ref()
                     );
                     try {
-                        return RepositoryContentRequest.execute(project.get(), request);
+                        return ToolUtils.execute(project.get(), request);
                     } catch (IOException e) {
                         LOGGER.error("Failed to download action.yml", e);
                         throw new DownloadException(e);

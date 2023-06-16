@@ -2,39 +2,13 @@ package com.github.yunabraska.githubworkflow.completion;
 
 import com.intellij.codeInsight.lookup.LookupElement;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.DEFAULT_VALUE_MAP;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_ENVS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_INPUTS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_JOBS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_NEEDS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_OUTPUTS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_RUN;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_SECRETS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_STEPS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_USES;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.getDescription;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.orEmpty;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.toGithubEnvs;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.toGithubOutputs;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_ENV;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_ENV_JOB;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_ENV_STEP;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_INPUT;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_JOB;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_NEEDS;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_OUTPUT;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_SECRET_JOB;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_SECRET_WORKFLOW;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_STEP;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_TEXT_VARIABLE;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.*;
+import static com.github.yunabraska.githubworkflow.completion.NodeIcon.*;
 import static java.util.Collections.singletonList;
 
 public class CompletionItem {
@@ -149,9 +123,8 @@ public class CompletionItem {
     }
 
     public static List<CompletionItem> listSecrets(final Supplier<WorkflowFile> part, final Supplier<WorkflowFile> full) {
-        final List<CompletionItem> result = new ArrayList<>();
         //JOB SECRETS
-        result.addAll(part.get()
+        final List<CompletionItem> result = new ArrayList<>(part.get()
                 .getCurrentNode()
                 .toWorkflowFile()
                 .getParentJob(full.get())
@@ -160,7 +133,7 @@ public class CompletionItem {
                 .orElse(new ArrayList<>()));
 
         //WORKFLOW SECRETS
-        result.addAll(part.get().children().stream()
+        part.get().children().stream()
                 .filter(node -> node.hasName("on") || node.hasName("true"))
                 .map(node -> node.toWorkflowFile().nodesToMap(
                         FIELD_SECRETS,
@@ -168,7 +141,8 @@ public class CompletionItem {
                         secret -> orEmpty(secret.name()),
                         GitHubWorkflowUtils::getDescription
                 ))
-                .flatMap(map -> completionItemsOf(map, ICON_SECRET_WORKFLOW).stream()).toList());
+                .peek(map -> result.addAll(completionItemsOf(map, ICON_SECRET_WORKFLOW)))
+                .close();
         return result;
     }
 
