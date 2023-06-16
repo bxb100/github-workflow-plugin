@@ -1,6 +1,6 @@
 package com.github.yunabraska.githubworkflow.util;
 
-import org.jetbrains.plugins.github.authentication.GithubAuthenticationManager;
+import org.jetbrains.plugins.github.authentication.GHAccountsUtil;
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccount;
 
 import java.util.Optional;
@@ -10,8 +10,7 @@ public class ToolUtils {
     static Predicate<GithubAccount> personalGitHub = account -> account.getServer().isGithubDotCom();
 
     public static Optional<GithubAccount> getAccount() {
-        return GithubAuthenticationManager.getInstance()
-                .getAccounts()
+        return GHAccountsUtil.getAccounts()
                 .stream()
                 .filter(personalGitHub)
                 .findFirst();

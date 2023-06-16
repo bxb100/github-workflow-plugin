@@ -168,7 +168,7 @@ public class CompletionItem {
                         secret -> orEmpty(secret.name()),
                         GitHubWorkflowUtils::getDescription
                 ))
-                .flatMap(map -> completionItemsOf(map, ICON_SECRET_WORKFLOW).stream()).collect(Collectors.toList()));
+                .flatMap(map -> completionItemsOf(map, ICON_SECRET_WORKFLOW).stream()).toList());
         return result;
     }
 

@@ -7,12 +7,14 @@ import com.intellij.openapi.project.Project;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
-import org.jetbrains.plugins.github.api.GithubApiRequestExecutorManager;
+import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
 import org.jetbrains.plugins.github.api.GithubApiResponse;
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccount;
+import org.jetbrains.plugins.github.util.GHCompatibilityUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /**
  * <a href="https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28">repos content</a>
@@ -27,20 +29,23 @@ public class RepositoryContentRequest extends GithubApiRequest.Get<String> {
     // FIXME
     public static String execute(Project project, RepositoryContentRequest request) throws IOException {
 
-        GithubApiRequestExecutorManager instance = GithubApiRequestExecutorManager.getInstance();
 
-        java.util.Optional<GithubAccount> optional = ToolUtils.getAccount();
+        try {
+            java.util.Optional<GithubAccount> optional = ToolUtils.getAccount();
 
-        if (optional.isPresent()) {
-            //		GithubApiRequestExecutor.Factory.Companion.getInstance().create("");
-            return instance.getExecutor(optional.get()).execute(request);
+            if (optional.isPresent()) {
+                return GithubApiRequestExecutor.Factory.Companion.getInstance().create(
+                        Objects.requireNonNull(GHCompatibilityUtil.getOrRequestToken(optional.get(), project))
+                ).execute(request);
+            }
+
+            if (project.isDisposed()) {
+                return null;
+            }
+        } catch (NullPointerException e) {
+            // ignore
         }
 
-        if (project.isDisposed()) {
-            return null;
-        }
-
-        // TODO: remove?
         NotificationGroupManager.getInstance()
                 .getNotificationGroup("GitHub Token NotExist")
                 .createNotification("No GitHub account found", NotificationType.ERROR)
