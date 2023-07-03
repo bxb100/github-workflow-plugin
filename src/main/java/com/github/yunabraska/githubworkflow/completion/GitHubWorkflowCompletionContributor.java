@@ -1,61 +1,26 @@
 package com.github.yunabraska.githubworkflow.completion;
 
-import com.intellij.codeInsight.completion.CompletionContributor;
-import com.intellij.codeInsight.completion.CompletionParameters;
-import com.intellij.codeInsight.completion.CompletionProvider;
-import com.intellij.codeInsight.completion.CompletionResultSet;
-import com.intellij.codeInsight.completion.CompletionType;
+import com.intellij.codeInsight.completion.*;
 import com.intellij.codeInsight.completion.impl.CamelHumpMatcher;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
-import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.yaml.YAMLUtil;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.completionItemOf;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.completionItemsOf;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listEnvs;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listInputs;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listJobNeeds;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listJobOutputs;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listJobs;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listNeeds;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listSecrets;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listStepOutputs;
-import static com.github.yunabraska.githubworkflow.completion.CompletionItem.listSteps;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.DEFAULT_VALUE_MAP;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_DEFAULT;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_ENVS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_GITHUB;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_INPUTS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_JOBS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_NEEDS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_OUTPUTS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_SECRETS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.FIELD_STEPS;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.addLookupElements;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.getCaretBracketItem;
-import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.getWorkflowFile;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_ENV;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_JOB;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_NODE;
-import static com.github.yunabraska.githubworkflow.completion.NodeIcon.ICON_OUTPUT;
-import static com.intellij.codeInsight.completion.CompletionUtil.DUMMY_IDENTIFIER_TRIMMED;
+import static com.github.yunabraska.githubworkflow.completion.CompletionItem.*;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
+import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowUtils.*;
+import static com.github.yunabraska.githubworkflow.completion.NodeIcon.*;
+import static com.intellij.patterns.PlatformPatterns.psiElement;
 import static java.util.Collections.singletonList;
 import static java.util.Optional.ofNullable;
 
@@ -66,7 +31,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
     public static AtomicReference<Project> project = new AtomicReference<>(null);
 
     public GitHubWorkflowCompletionContributor() {
-        extend(CompletionType.BASIC, PlatformPatterns.psiElement(), completionProvider());
+        extend(CompletionType.BASIC, psiElement(), completionProvider());
     }
 
     @NotNull
@@ -74,9 +39,9 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
         return new CompletionProvider<>() {
             @Override
             public void addCompletions(
-                    @NotNull final CompletionParameters parameters,
-                    @NotNull final ProcessingContext context,
-                    @NotNull final CompletionResultSet resultSet
+                @NotNull final CompletionParameters parameters,
+                @NotNull final ProcessingContext context,
+                @NotNull final CompletionResultSet resultSet
             ) {
                 PsiElement position = parameters.getPosition();
                 project.set(position.getProject());
@@ -111,24 +76,22 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                         }
                         //ADD LOOKUP ELEMENTS
                         ofNullable(completionResultMap.getOrDefault(cbi.length - 1, null))
-                                .map(GitHubWorkflowCompletionContributor::toLookupItems)
-                                .ifPresent(resultSetPrefix::addAllElements);
+                            .map(GitHubWorkflowCompletionContributor::toLookupItems)
+                            .ifPresent(resultSetPrefix::addAllElements);
                     });
                     //ACTIONS && WORKFLOWS
                     if (caretBracketItem.isEmpty()) {
                         if (FIELD_NEEDS.equals(partFile.get().getCurrentNode().name())) {
                             Optional.of(listNeeds(partFile, fullFile)).filter(cil -> !cil.isEmpty())
-                                    .map(GitHubWorkflowCompletionContributor::toLookupItems)
-                                    .ifPresent(resultSetPrefix::addAllElements);
+                                .map(GitHubWorkflowCompletionContributor::toLookupItems)
+                                .ifPresent(resultSetPrefix::addAllElements);
                         } else {
-                            // skip `a: *<crater>` PS: `with:(EOF)` (just discuss normal YAML)
-                            YAMLKeyValue parent = PsiTreeUtil.getParentOfType(position, YAMLKeyValue.class);
-                            if (parent == null) {
-                                return;
-                            }
-                            // idea: https://intellij-support.jetbrains.com/hc/en-us/community/posts/360000333580-How-to-find-value-by-key-in-YML-file
-                            String qualifiedName = YAMLUtil.getConfigFullName(parent);
-                            if (!qualifiedName.contains(DUMMY_IDENTIFIER_TRIMMED) && !qualifiedName.endsWith("with")) {
+                            // hard to find `with: c` different with `with:<EOL> c`
+                            boolean innerWithContext =
+                                psiElement().withSuperParent(3, psiElement(YAMLKeyValue.class).withName("with"))
+                                    .accepts(position);
+
+                            if (!innerWithContext) {
                                 return;
                             }
                             //TODO: AutoCompletion middle?
@@ -168,7 +131,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                 case FIELD_JOBS -> completionItemMap.put(i, listJobs(partFile, fullFile));
                 case FIELD_ENVS -> completionItemMap.put(i, listEnvs(partFile, fullFile));
                 case FIELD_GITHUB ->
-                        completionItemMap.put(i, completionItemsOf(DEFAULT_VALUE_MAP.get(FIELD_GITHUB).get(), ICON_ENV));
+                    completionItemMap.put(i, completionItemsOf(DEFAULT_VALUE_MAP.get(FIELD_GITHUB).get(), ICON_ENV));
                 case FIELD_INPUTS -> completionItemMap.put(i, listInputs(partFile, fullFile));
                 case FIELD_SECRETS -> completionItemMap.put(i, listSecrets(partFile, fullFile));
                 case FIELD_NEEDS -> completionItemMap.put(i, listJobNeeds(partFile, fullFile));
@@ -179,16 +142,16 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                     } else if (!"runs-on".equals(partFile.get().getCurrentNode().name()) && !"os".equals(partFile.get().getCurrentNode().name())) {
                         //DEFAULT
                         ofNullable(DEFAULT_VALUE_MAP.getOrDefault(FIELD_DEFAULT, null))
-                                .map(Supplier::get)
-                                .map(map -> completionItemsOf(map, ICON_NODE))
-                                .ifPresent(items -> completionItemMap.put(i, items));
+                            .map(Supplier::get)
+                            .map(map -> completionItemsOf(map, ICON_NODE))
+                            .ifPresent(items -> completionItemMap.put(i, items));
                     }
                 }
             }
         } else if (i == 1) {
             switch (cbi[0]) {
                 case FIELD_JOBS, FIELD_NEEDS, FIELD_STEPS ->
-                        completionItemMap.put(i, singletonList(completionItemOf(FIELD_OUTPUTS, "", ICON_OUTPUT)));
+                    completionItemMap.put(i, singletonList(completionItemOf(FIELD_OUTPUTS, "", ICON_OUTPUT)));
                 default -> {
                 }
             }

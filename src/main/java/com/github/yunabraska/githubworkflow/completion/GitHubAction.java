@@ -27,8 +27,7 @@ public class GitHubAction {
 
     private static final Logger LOGGER = Logger.getInstance(GitHubAction.class);
 
-    // https://regex101.com/r/DSlmSb/1
-    private static final Pattern PATTERN = Pattern.compile("^(?<name>.+?)/(?<repo>.+?)(/(?<path>.+))?@(?<ref>.+)");
+
     private final Map<String, String> inputs = new ConcurrentHashMap<>();
     private final Map<String, String> outputs = new ConcurrentHashMap<>();
     private final AtomicLong expiration = new AtomicLong(0);
@@ -85,19 +84,16 @@ public class GitHubAction {
                 return;
             }
 
-            Matcher matcher = PATTERN.matcher(uses);
-            if (!matcher.matches()) {
+            ToolUtils.GitHubUsesPart part = ToolUtils.extractGitHubWorkflowUses(uses);
+            if (part == null) {
                 return;
             }
-            String username = matcher.group("name");
-            String repo = matcher.group("repo");
-            String path = matcher.group("path");
-            String ref = matcher.group("ref");
 
+            String path = part.getPath();
             this.local = false;
-            this.name.set(username);
-            this.repo.set(repo);
-            this.ref.set(ref);
+            this.name.set(part.getUsername());
+            this.repo.set(part.getRepo());
+            this.ref.set(part.getRef());
             // compatible with workflow and action
             if (path == null) {
                 path = "action.yml";

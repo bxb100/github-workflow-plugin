@@ -13,14 +13,16 @@
     <extensions defaultExtensionNs="com.intellij">
 
         <completion.contributor
-                language="yaml"
-                implementationClass="com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor"
+            language="yaml"
+            implementationClass="com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor"
         />
 
         <notificationGroup id="GitHub Token NotExist" displayType="BALLOON" key="notify.github.account.not.exist"/>
         <editorNotificationProvider
-                implementation="com.github.yunabraska.githubworkflow.notify.GithubSetupNotificationProvider"/>
+            implementation="com.github.yunabraska.githubworkflow.notify.GithubSetupNotificationProvider"/>
 
+        <psi.referenceContributor
+            implementation="com.github.yunabraska.githubworkflow.reference.YAMLUsesReferenceContributor" language="yaml"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
