@@ -4,13 +4,7 @@ import com.github.yunabraska.githubworkflow.util.ToolUtils;
 import com.intellij.openapi.paths.WebReference;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.StandardPatterns;
-import com.intellij.psi.LiteralTextEscaper;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiLanguageInjectionHost;
-import com.intellij.psi.PsiReference;
-import com.intellij.psi.PsiReferenceContributor;
-import com.intellij.psi.PsiReferenceProvider;
-import com.intellij.psi.PsiReferenceRegistrar;
+import com.intellij.psi.*;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
@@ -61,8 +55,10 @@ public class YAMLUsesReferenceContributor extends PsiReferenceContributor {
                         return PsiReference.EMPTY_ARRAY;
                     }
 
-                    String url =
-                        String.format("https://github.com/%s/%s/tree/%s", part.getUsername(), part.getRepo(), part.getRef());
+                    String url = String.format("https://github.com/%s/%s", part.getUsername(), part.getRepo());
+                    if (part.getRef() == null) {
+                        url += "/tree/" + part.getRef();
+                    }
                     return new PsiReference[]{new WebReference(scalarElement, textRange, url)};
                 }
             }, PsiReferenceRegistrar.LOWER_PRIORITY);
