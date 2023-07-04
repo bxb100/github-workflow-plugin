@@ -56,7 +56,7 @@ public class YAMLUsesReferenceContributor extends PsiReferenceContributor {
                     }
 
                     String url = String.format("https://github.com/%s/%s", part.getUsername(), part.getRepo());
-                    if (part.getRef() == null) {
+                    if (part.getRef() != null) {
                         url += "/tree/" + part.getRef();
                     }
                     return new PsiReference[]{new WebReference(scalarElement, textRange, url)};

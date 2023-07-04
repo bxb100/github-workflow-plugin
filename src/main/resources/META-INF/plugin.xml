@@ -12,6 +12,8 @@
 
     <extensions defaultExtensionNs="com.intellij">
 
+        <applicationService serviceImplementation="com.github.yunabraska.githubworkflow.api.GitHubRequestService" />
+
         <completion.contributor
             language="yaml"
             implementationClass="com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor"

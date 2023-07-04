@@ -1,8 +1,10 @@
 package com.github.yunabraska.githubworkflow.completion;
 
+import com.github.yunabraska.githubworkflow.api.GitHubRequestService;
 import com.github.yunabraska.githubworkflow.api.RepositoryContentRequest;
 import com.github.yunabraska.githubworkflow.model.DownloadException;
 import com.github.yunabraska.githubworkflow.util.ToolUtils;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil;
 import com.intellij.openapi.project.ProjectUtil;
@@ -14,8 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowCompletionContributor.project;
 import static com.github.yunabraska.githubworkflow.completion.GitHubWorkflowConfig.*;
@@ -167,13 +167,15 @@ public class GitHubAction {
             } else {
                 downloader = () -> {
                     RepositoryContentRequest request = RepositoryContentRequest.request(
-                            this.name(),
-                            this.repo(),
-                            this.path(),
-                            this.ref()
+                        this.name(),
+                        this.repo(),
+                        this.path(),
+                        this.ref()
                     );
                     try {
-                        return ToolUtils.execute(project.get(), request);
+                        return ApplicationManager.getApplication().getService(GitHubRequestService.class).request(
+                            project.get(), request
+                        );
                     } catch (IOException e) {
                         LOGGER.error("Failed to download action.yml", e);
                         throw new DownloadException(e);
@@ -197,20 +199,20 @@ public class GitHubAction {
 
     private Map<String, String> getActionParameters(final WorkflowFile workflowFile, final String node, final boolean action) {
         return workflowFile.nodesToMap(
-                node, n -> action || (ofNullable(n.parent()).map(YamlNode::parent).map(YamlNode::parent).filter(parent -> "on".equals(parent.name) || "true".equals(parent.name)).isPresent()),
-                n -> orEmpty(n.name()),
-                GitHubWorkflowUtils::getDescription
+            node, n -> action || (ofNullable(n.parent()).map(YamlNode::parent).map(YamlNode::parent).filter(parent -> "on".equals(parent.name) || "true".equals(parent.name)).isPresent()),
+            n -> orEmpty(n.name()),
+            GitHubWorkflowUtils::getDescription
         );
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(
-                this.name() + "_" + this.repo()
+            this.name() + "_" + this.repo()
         );
         if (this.path() != null) {
             sb.append(this.path().replace("action.yml", "")
-                    .replace("/", "_").replace(".", "_"));
+                .replace("/", "_").replace(".", "_"));
         }
         if (this.ref() != null) {
             sb.append("_").append(this.ref());

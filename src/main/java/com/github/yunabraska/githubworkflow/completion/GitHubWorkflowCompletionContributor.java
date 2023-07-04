@@ -88,7 +88,13 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
                         } else {
                             // hard to find `with: c` different with `with:<EOL> c`
                             boolean innerWithContext =
-                                psiElement().withSuperParent(3, psiElement(YAMLKeyValue.class).withName("with"))
+                                psiElement()
+                                    .andOr(
+                                        // scalar text
+                                        psiElement().withSuperParent(2, psiElement(YAMLKeyValue.class).withName("with")),
+                                        // mapping text
+                                        psiElement().withSuperParent(3, psiElement(YAMLKeyValue.class).withName("with"))
+                                    )
                                     .accepts(position);
 
                             if (!innerWithContext) {
